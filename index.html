@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U.S. Earthquake Analysis – CMSC 320</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      color: #222;
+      line-height: 1.7;
+    }
+
+    h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.2rem; margin-top: 2.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.3rem; }
+    h3 { font-size: 1rem; margin-top: 1.5rem; }
+
+    p, li { font-size: 0.97rem; color: #333; }
+    ul { padding-left: 1.5rem; }
+    li { margin-bottom: 0.4rem; }
+
+    .subtitle { color: #555; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .authors  { color: #555; font-size: 0.9rem;  margin-bottom: 2rem; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f5f5f5; }
+
+    pre {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    a { color: #1a4a8a; }
+
+    footer {
+      margin-top: 4rem;
+      border-top: 1px solid #ccc;
+      padding-top: 1rem;
+      font-size: 0.82rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>U.S. Earthquake Analysis (2015–2025)</h1>
+  <p class="subtitle">CMSC 320 – Introduction to Data Science, Spring 2026</p>
+  <p class="authors">Leul Belay, Nathan Zhao, Zoie Luka, Joshua Wong</p>
+
+  <h2>1. Contributions</h2>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Sections</th><th>Contribution</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Leul Belay</td><td>A, D, E</td><td>Project idea, ML model design and training, test data analysis</td></tr>
+      <tr><td>Nathan Zhao</td><td>B, C</td><td>Data curation and preprocessing, exploratory data analysis</td></tr>
+      <tr><td>Zoie Luka</td><td>F, G</td><td>Visualizations, result analysis, final tutorial report</td></tr>
+      <tr><td>Joshua Wong</td><td>C, F</td><td>Exploratory analysis, hypothesis testing, visualizations</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Introduction</h2>
+  <p>
+    The United States experiences thousands of earthquakes every year, from small tremors to major events
+    capable of causing significant damage. Understanding where earthquakes happen, how deep they occur,
+    and what predicts their magnitude is important for hazard planning and public safety.
+  </p>
+  <p>
+    In this project, we analyzed a decade of earthquake data from the USGS catalog to answer three questions:
+  </p>
+  <ul>
+    <li>Where are earthquakes most concentrated in the contiguous U.S.?</li>
+    <li>Is there a relationship between focal depth and magnitude?</li>
+    <li>Can we predict whether an earthquake will be significant (M ≥ 4.5) using observable features?</li>
+  </ul>
+
+  <h2>3. Data Curation</h2>
+  <p>
+    We used the <a href="https://earthquake.usgs.gov/earthquakes/search/" target="_blank">USGS ANSS Comprehensive Earthquake Catalog (ComCat)</a>,
+    queried via the FDSN Event API. We pulled all M3.0+ events in the contiguous U.S. from 2015 to 2025.
+  </p>
+
+  <h3>Query parameters</h3>
+  <table>
+    <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>starttime</td><td>2015-01-01</td></tr>
+      <tr><td>endtime</td><td>2025-12-31</td></tr>
+      <tr><td>minmagnitude</td><td>3.0</td></tr>
+      <tr><td>latitude range</td><td>24.40° to 49.38°</td></tr>
+      <tr><td>longitude range</td><td>−124.85° to −66.89°</td></tr>
+      <tr><td>format</td><td>CSV</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Preprocessing</h3>
+  <pre>
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv("query.csv")
+
+df['time']      = pd.to_datetime(df['time'])
+df['year']      = df['time'].dt.year
+df['month']     = df['time'].dt.month
+df['hour']      = df['time'].dt.hour
+df['dayofweek'] = df['time'].dt.dayofweek
+
+df = df.dropna(subset=['mag', 'depth'])
+df['significant'] = (df['mag'] >= 4.5).astype(int)
+  </pre>
+
+  <h3>Sources</h3>
+  <ul>
+    <li><a href="https://earthquake.usgs.gov/earthquakes/search/" target="_blank">USGS Earthquake Catalog</a></li>
+    <li><a href="https://earthquake.usgs.gov/data/comcat/" target="_blank">ComCat Documentation</a></li>
+    <li><a href="https://earthquake.usgs.gov/fdsnws/event/1/" target="_blank">FDSN Event API</a></li>
+  </ul>
+
+  <h2>4. Exploratory Data Analysis</h2>
+
+  <h3>Finding 1 – Magnitude distribution</h3>
+  <p>
+    Earthquake magnitudes follow a right-skewed distribution consistent with the Gutenberg-Richter law.
+    About 80% of events fall between M3.0 and M4.5. We visualized this with a histogram and KDE overlay.
+  </p>
+
+  <h3>Finding 2 – California is seismically distinct</h3>
+  <p>
+    A two-sample t-test comparing California's mean magnitude to the rest of CONUS showed a statistically
+    significant difference (p &lt; 0.05), driven by the high concentration of M4–M6 events along the San Andreas fault.
+  </p>
+
+  <h3>Finding 3 – Depth correlates with magnitude</h3>
+  <p>
+    A Pearson correlation test between depth and magnitude returned r ≈ 0.15 (p &lt; 0.001) — a weak but
+    significant positive relationship. Deeper events tend to be slightly larger, which motivated including
+    depth as a feature in our models.
+  </p>
+
+  <h2>5. Primary Analysis – Machine Learning</h2>
+  <p>
+    We framed this as a binary classification problem: predict whether an event is significant (M ≥ 4.5)
+    or minor. We trained four classifiers on an 80/20 stratified train-test split:
+  </p>
+  <ul>
+    <li>Logistic Regression (baseline)</li>
+    <li>Decision Tree</li>
+    <li>Random Forest (primary model)</li>
+    <li>K-Nearest Neighbors</li>
+  </ul>
+  <p>Features used: latitude, longitude, depth, year, month, hour, dayofweek.</p>
+  <p>
+    Random Forest performed best. Latitude and longitude were the most important features,
+    confirming that geography is the strongest predictor of earthquake significance.
+  </p>
+
+  <h2>6. Visualization</h2>
+  <p>All plots are in the <a href="main.ipynb">Jupyter notebook</a>. They include:</p>
+  <ul>
+    <li>U.S. map of all earthquake events colored by magnitude</li>
+    <li>Magnitude distribution histogram with KDE</li>
+    <li>Depth vs. magnitude scatter plot with regression line</li>
+    <li>Random Forest feature importance bar chart</li>
+    <li>Confusion matrix and ROC curve</li>
+  </ul>
+
+  <h2>7. Insights and Conclusions</h2>
+  <p>
+    Geography is the strongest predictor of earthquake significance — where an earthquake happens matters
+    more than when or how deep. Depth adds modest but real predictive value. Temporal features contributed
+    less than expected, and no clear seasonal pattern emerged.
+  </p>
+  <p>
+    Class imbalance (only ~15% of events are M4.5+) meant we evaluated models using AUC and recall
+    rather than raw accuracy. Both metrics were meaningfully above random baseline.
+  </p>
+  <p>
+    Future work could incorporate fault proximity data, induced seismicity factors (like wastewater
+    injection), or frame this as a regression problem to predict continuous magnitude.
+  </p>
+  <p>
+    Full code and data: <a href="https://github.com/bobelai0/320-project" target="_blank">github.com/bobelai0/320-project</a>
+  </p>
+
+  <footer>
+    CMSC 320 · Spring 2026 · University of Maryland &nbsp;|&nbsp; Data: USGS ANSS ComCat
+  </footer>
+
+</body>
+</html>
